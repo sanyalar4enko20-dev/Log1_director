@@ -2,9 +2,10 @@ import requests
 import time
 import sqlite3
 import json
+import os
 
-TOKEN = "8653546812:AAHmXEiDaCx_kuAlWlH9mLAFFjfO3Svdbdc"
-CRYPTO_TOKEN = "552232:AAHPmVzsS9UuK3Am3yeiSsEdnY6ryTyIMoi"
+TOKEN = os.getenv("BOT_TOKEN")
+CRYPTO_TOKEN = os.getenv("CRYPTO_TOKEN")
 
 URL = f"https://api.telegram.org/bot{TOKEN}/"
 CRYPTO_URL = "https://pay.crypt.bot/api/"
