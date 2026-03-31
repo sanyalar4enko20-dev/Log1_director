@@ -15,7 +15,7 @@ from aiogram.fsm.context import FSMContext
 from typing import Callable, Dict, Any, Awaitable
 
 # ===== ТОКЕНЫ =====
-TOKEN = os.getenv("BOT_TOKEN")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 CRYPTO_TOKEN = os.getenv("CRYPTO_TOKEN")
 
 bot = Bot(BOT_TOKEN)
