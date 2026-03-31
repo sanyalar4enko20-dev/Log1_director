@@ -957,143 +957,25 @@ async def auto_calculator(message: Message):
     else:
         await message.reply(f"{result}")
 
-# ===== УНИВЕРСАЛЬНЫЙ ЗАПУСК =====
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+# ===== ЗАПУСК =====
+from aiohttp import web
+import asyncio
 
-IS_REPLIT = bool(os.environ.get('REPL_ID') or os.environ.get('REPL_OWNER') or os.environ.get('REPLIT_DB_URL'))
-IS_LOCAL = not IS_REPLIT
+async def handle(request):
+    return web.Response(text="Бот работает")
 
-socket.setdefaulttimeout(60)
-
-async def run_local_polling():
-    retry_count = 0
-    max_retries = 5
-    
-    while True:
-        try:
-            if retry_count > 0:
-                logger.info(f"Попытка переподключения {retry_count}/{max_retries}")
-            
-            try:
-                await bot.delete_webhook(request_timeout=30)
-                logger.info("Вебхук удален")
-            except Exception as e:
-                logger.warning(f"Ошибка удаления вебхука: {e}")
-            
-            logger.info("Запуск polling...")
-            await dp.start_polling(
-                bot,
-                skip_updates=True,
-                allowed_updates=["message", "callback_query"],
-                request_timeout=60
-            )
-            
-            logger.warning("Polling остановился")
-            retry_count += 1
-            
-            if retry_count >= max_retries:
-                logger.error("Достигнут лимит переподключений")
-                break
-                
-            await asyncio.sleep(5)
-            
-        except asyncio.TimeoutError:
-            logger.warning("Таймаут подключения")
-            retry_count += 1
-            await asyncio.sleep(5)
-            
-        except Exception as e:
-            logger.error(f"Ошибка в polling: {e}")
-            retry_count += 1
-            await asyncio.sleep(5)
-
-async def run_replit_webhook():
-    try:
-        from aiohttp import web
-        
-        app = web.Application()
-        
-        async def handle_webhook(request):
-            try:
-                update_data = await request.json()
-                update = Update.model_validate(update_data, context={"bot": bot})
-                await dp.feed_update(bot, update)
-                return web.Response(status=200)
-            except Exception as e:
-                logger.error(f"Ошибка в вебхуке: {e}")
-                return web.Response(status=500)
-        
-        async def health_check(request):
-            return web.Response(text="Бот работает")
-        
-        app.router.add_post("/webhook", handle_webhook)
-        app.router.add_get("/", health_check)
-        
-        runner = web.AppRunner(app)
-        await runner.setup()
-        
-        port = int(os.environ.get("PORT", 8080))
-        site = web.TCPSite(runner, "0.0.0.0", port)
-        await site.start()
-        logger.info(f"Веб-сервер запущен на порту {port}")
-        
-        repl_slug = os.environ.get('REPL_SLUG', 'bot')
-        repl_owner = os.environ.get('REPL_OWNER', 'replit')
-        webhook_url = f"https://{repl_slug}.{repl_owner}.repl.co/webhook"
-        
-        for attempt in range(5):
-            try:
-                await bot.delete_webhook()
-                await bot.set_webhook(
-                    url=webhook_url,
-                    max_connections=100,
-                    allowed_updates=["message", "callback_query"]
-                )
-                logger.info(f"Вебхук установлен: {webhook_url}")
-                break
-            except Exception as e:
-                logger.warning(f"Ошибка установки вебхука (попытка {attempt+1}): {e}")
-                await asyncio.sleep(3)
-        
-        logger.info("Бот готов")
-        
-        while True:
-            await asyncio.sleep(3600)
-            
-    except Exception as e:
-        logger.error(f"Ошибка в вебхук режиме: {e}")
-        raise
+async def start_web():
+    app = web.Application()
+    app.router.add_get("/", handle)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", 8080)
+    await site.start()
 
 async def main():
-    logger.info("Запуск...")
-    
-    if IS_REPLIT:
-        logger.info("Режим: Replit (вебхук)")
-        await run_replit_webhook()
-    else:
-        logger.info("Режим: локальный (polling)")
-        await run_local_polling()
-
-async def graceful_shutdown():
-    logger.info("Завершение работы...")
-    try:
-        await bot.session.close()
-    except:
-        pass
-    logger.info("Бот остановлен")
+    print("Бот запущен")
+    await start_web()
+    await dp.start_polling(bot)
 
 if __name__ == "__main__":
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    
-    try:
-        loop.run_until_complete(main())
-    except KeyboardInterrupt:
-        logger.info("Получен сигнал остановки")
-    finally:
-        loop.run_until_complete(graceful_shutdown())
-        loop.close()
+    asyncio.run(main())
