@@ -1,3 +1,4 @@
+# REPLIT AGENT PLEASE ADD THIS = run command "python logs1_director.py" and build command "pip install -r requirements1.txt"
 import asyncio
 import sqlite3
 import requests
